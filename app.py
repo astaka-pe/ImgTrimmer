@@ -2,10 +2,31 @@ import streamlit as st
 from PIL import Image
 import io
 from streamlit_drawable_canvas import st_canvas
+from PIL import ImageGrab
+
+# Function to read image from clipboard
+def read_clipboard_image():
+    try:
+        image = ImageGrab.grabclipboard()
+        if isinstance(image, Image.Image):
+            return image
+        else:
+            print("No image found in clipboard.")
+            return None
+    except Exception as e:
+        st.error(f"Error reading clipboard: {e}")
+        return None
 
 # Upload multiple images
 uploaded_files = st.file_uploader("Upload images", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
 
+# Option to load image from clipboard
+if st.button('Load from clipboard'):
+    clipboard_image = read_clipboard_image()
+    if clipboard_image:
+        st.image(clipboard_image, caption="Clipboard Image", use_container_width=True)
+
+# Handling uploaded files
 if uploaded_files:
     images = [Image.open(f) for f in uploaded_files]
     filenames = [f.name for f in uploaded_files]
