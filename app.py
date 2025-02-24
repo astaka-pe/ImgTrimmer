@@ -1,8 +1,8 @@
 import streamlit as st
-from PIL import Image
+from PIL import Image, ImageGrab
 import io
 from streamlit_drawable_canvas import st_canvas
-from PIL import ImageGrab
+
 
 # Function to read image from clipboard
 def read_clipboard_image():
@@ -23,14 +23,19 @@ uploaded_files = st.file_uploader("Upload images", type=["png", "jpg", "jpeg"], 
 # Option to load image from clipboard
 if st.button('Load from clipboard'):
     clipboard_image = read_clipboard_image()
-    if clipboard_image:
-        st.image(clipboard_image, caption="Clipboard Image", use_container_width=True)
+    if clipboard_image is not None:
+        uploaded_files.append(clipboard_image)
 
 # Handling uploaded files
 if uploaded_files:
     images = [Image.open(f) for f in uploaded_files]
     filenames = [f.name for f in uploaded_files]
-    img_width, img_height = images[0].size
+
+    img_size = images[0].size
+    img_width, img_height = img_size
+    for img in images[1:]:
+        assert img.size == img_size, f"Image sizes do not match! Found {img.size}, expected {img_size}"
+
     canvas_width = 150  # Set the canvas width
     scale = canvas_width / img_width  # Calculate scale factor
     canvas_height = int(img_height * scale)  # Calculate height to maintain aspect ratio

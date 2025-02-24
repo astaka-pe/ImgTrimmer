@@ -23,3 +23,7 @@ streamlit run app.py
 ```
 
 ![Image](docs/demo.png)
+
+## Todo
+
+- [] Support loading image from clipboard
