@@ -11,7 +11,7 @@ python3 -m venv .venv
 source .venv/bin/activate # source .venv/bin/activate.fish
 
 # Windows
-.\.venv\Scripts\activate
+.venv/Scripts/activate
 
 pip install -r requirements.txt
 ```
@@ -26,4 +26,4 @@ streamlit run app.py
 
 ## Todo
 
-- [] Support loading image from clipboard
+- [ ] Support loading image from clipboard
