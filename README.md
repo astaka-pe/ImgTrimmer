@@ -5,12 +5,13 @@
 ```
 git clone https://github.com/astaka-pe/ImgTrimmer.git
 cd ImgTrimmer
-python3 -m venv .venv
 
 # Linux
+python3 -m venv .venv
 source .venv/bin/activate # source .venv/bin/activate.fish
 
 # Windows
+py -3.10 -m venv .venv
 .venv/Scripts/activate
 
 pip install -r requirements.txt
@@ -26,4 +27,4 @@ streamlit run app.py
 
 ## Todo
 
-- [ ] Support loading image from clipboard
+- [ ] Support image loader from clipboard
