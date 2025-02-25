@@ -27,4 +27,4 @@ streamlit run app.py
 
 ## Todo
 
-- [ ] Support image loader from clipboard
+- [ ] Add image loader from clipboard
