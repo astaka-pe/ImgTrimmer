@@ -1,4 +1,4 @@
-# ImgTrimmer
+# ImgTrimmer: Crop Multiple Images with a Consistent Rectangle
 
 This app runs locally and helps you crop experimental results to easily create publication-ready figures.
 
@@ -26,7 +26,3 @@ streamlit run app.py
 ```
 
 ![Image](docs/demo.gif)
-
-## Todo
-
-- [ ] Operation check on Linux

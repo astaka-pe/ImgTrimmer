@@ -55,14 +55,10 @@ def main():
         img_size = images[0].size
         img_width, img_height = img_size
 
-        size_mismatch = False
         for i, img in enumerate(images[1:], 1):
             if img.size != img_size:
-                st.warning(f"Image '{filenames[i]}' has different size: {img.size}. Expected: {img_size}")
-                size_mismatch = True
-        
-        if size_mismatch:
-            st.warning("Some images have different sizes. Cropping may not work as expected.")
+                st.info(f"Resizing image '{filenames[i]}' from {img.size} to {img_size}")
+                images[i] = img.resize(img_size)
 
         canvas_width = 400
         scale = canvas_width / img_width
