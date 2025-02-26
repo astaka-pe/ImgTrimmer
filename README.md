@@ -23,8 +23,8 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-![Image](docs/demo.png)
+![Image](docs/demo.gif)
 
 ## Todo
 
-- [ ] Add image loader from clipboard
+- [ ] Operation check on Linux

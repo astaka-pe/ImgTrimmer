@@ -2,91 +2,117 @@ import streamlit as st
 from PIL import Image, ImageGrab
 import io
 from streamlit_drawable_canvas import st_canvas
+import uuid
 
-
-# Function to read image from clipboard
 def read_clipboard_image():
     try:
         image = ImageGrab.grabclipboard()
         if isinstance(image, Image.Image):
             return image
         else:
-            print("No image found in clipboard.")
+            st.warning("No image found in clipboard.")
             return None
     except Exception as e:
         st.error(f"Error reading clipboard: {e}")
         return None
 
-
-def main(clipboard_image):
-    # Upload multiple images
+def main():
+    if "clipboard_images" not in st.session_state:
+        st.session_state.clipboard_images = []
+        st.session_state.clipboard_filenames = []
+    
     uploaded_files = st.file_uploader("Upload images", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
 
-    # Option to load image from clipboard
-    if st.button('Load from clipboard'):
-        clipboard_image = read_clipboard_image()
+    clip_load, clip_clear = st.columns(2)
+    with clip_load:
+        if st.button("Load from clipboard"):
+            clipboard_image = read_clipboard_image()
+            if clipboard_image:
+                # Generate unique filename with timestamp
+                clipboard_filename = f"clipboard_{uuid.uuid4().hex[:8]}"
+                st.session_state.clipboard_images.append(clipboard_image)
+                st.session_state.clipboard_filenames.append(clipboard_filename)
+                st.success("Image loaded from clipboard!")
+                st.rerun()
+    
+    with clip_clear:
+        if st.session_state.clipboard_images and st.button("Clear clipboard images"):
+            st.session_state.clipboard_images = []
+            st.session_state.clipboard_filenames = []
+            st.rerun()
+    
+    images = []
+    filenames = []
 
-    # Handling uploaded files
-    if uploaded_files or clipboard_image:
+    if uploaded_files:
         images = [Image.open(f) for f in uploaded_files]
         filenames = [f.name for f in uploaded_files]
 
-        if clipboard_image:
-            images.append(clipboard_image)
-            filenames.append("clipboard")
+    images.extend(st.session_state.clipboard_images)
+    filenames.extend(st.session_state.clipboard_filenames)
 
+    if images:
         img_size = images[0].size
         img_width, img_height = img_size
-        for img in images[1:]:
-            assert img.size == img_size, f"Image sizes do not match! Found {img.size}, expected {img_size}"
 
-        canvas_width = 150  # Set the canvas width
-        scale = canvas_width / img_width  # Calculate scale factor
-        canvas_height = int(img_height * scale)  # Calculate height to maintain aspect ratio
+        size_mismatch = False
+        for i, img in enumerate(images[1:], 1):
+            if img.size != img_size:
+                st.warning(f"Image '{filenames[i]}' has different size: {img.size}. Expected: {img_size}")
+                size_mismatch = True
+        
+        if size_mismatch:
+            st.warning("Some images have different sizes. Cropping may not work as expected.")
+
+        canvas_width = 400
+        scale = canvas_width / img_width
+        canvas_height = int(img_height * scale)
 
         st.subheader("Input Images")
+        num_cols = min(len(images), 4)
         cols = st.columns(len(images))
-        for i in range(len(cols)):
-            with cols[i]:
-                if i == 0:
-                    canvas_result = st_canvas(
-                        fill_color="rgba(0, 0, 0, 0)",  # Transparent fill
-                        stroke_width=3,
-                        stroke_color="red",
-                        background_image=images[0].resize((canvas_width, canvas_height)),  # Show the first image as reference
-                        update_streamlit=True,
-                        height=canvas_height,
-                        width=canvas_width,
-                        drawing_mode="rect",
-                        key="canvas",
-                        initial_drawing=None,
-                    )
-                else:
-                    st.image(images[i], caption=filenames[i], width=canvas_width)
+        for i , (img, filename) in enumerate(zip(images, filenames)):
+            col_idx = i % num_cols
+            with cols[col_idx]:
+                st.image(img, caption=filename, use_container_width=True)
+
+        st.subheader("Drawing Canvas (First Image)")
+        canvas_result = st_canvas(
+            fill_color="rgba(0, 0, 0, 0)",  # Transparent fill
+            stroke_width=3,
+            stroke_color="red",
+            background_image=images[0].resize((canvas_width, canvas_height)),
+            update_streamlit=True,
+            height=canvas_height,
+            width=canvas_width,
+            drawing_mode="rect",
+            key="canvas",
+            initial_drawing=None,
+        )
         
         # Create a canvas to draw cropping rectangle
-
         if canvas_result.json_data is not None:
-            # Extract rectangle coordinates from the canvas
             objects = canvas_result.json_data["objects"]
             if objects:
-                obj = objects[-1]  # Take the first rectangle
+                obj = objects[-1]
                 x, y, w, h = int(obj["left"] / scale), int(obj["top"] / scale), int(obj["width"] / scale), int(obj["height"] / scale)
 
-                # Crop images using the selected region
                 cropped_images = [img.crop((x, y, x + w, y + h)) for img in images]
 
                 st.subheader("Cropped Images")
-                cols = st.columns(len(cropped_images))
-                for i in range(len(cols)):
-                    with cols[i]:
-                        st.image(cropped_images[i], caption=filenames[i], use_container_width=True)
-
-                # Provide download buttons
-                for i, cropped in enumerate(cropped_images):
-                    buffer = io.BytesIO()
-                    cropped.save(buffer, format="PNG")
+                cropped_cols = st.columns(num_cols)
+                for i, (cropped, filename) in enumerate(zip(cropped_images, filenames)):
+                    col_idx = i % num_cols
+                    with cropped_cols[col_idx]:
+                        st.image(cropped, caption=filename, use_container_width=True)
+                        buffer = io.BytesIO()
+                        cropped.save(buffer, format="PNG")
+                        st.download_button(
+                            label=f"Download {filename}",
+                            data=buffer.getvalue(),
+                            file_name=f"cropped_{filename}.png",
+                            mime="image/png"
+                        )
 
 if __name__ == "__main__":
-    clipboard_image = None
-    main(clipboard_image)
+    main()
