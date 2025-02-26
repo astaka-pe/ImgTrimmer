@@ -1,5 +1,7 @@
 # ImgTrimmer
 
+This app runs locally and helps you crop experimental results to easily create publication-ready figures.
+
 ## Installation
 
 ```
