@@ -72,17 +72,20 @@ def main():
             with cols[col_idx]:
                 st.image(img, caption=filename, use_container_width=True)
 
-        st.subheader("Drawing Canvas (First Image)")
+        st.subheader("Drawing Canvas")
+        selected_idx = st.selectbox("Select image for drawing", range(len(images)), format_func=lambda i: filenames[i])
+        selected_image = images[selected_idx]
+        canvas_key = f"canvas_{selected_idx}"
         canvas_result = st_canvas(
             fill_color="rgba(0, 0, 0, 0)",  # Transparent fill
             stroke_width=3,
             stroke_color="red",
-            background_image=images[0].resize((canvas_width, canvas_height)),
+            background_image=selected_image.resize((canvas_width, canvas_height)),
             update_streamlit=True,
             height=canvas_height,
             width=canvas_width,
             drawing_mode="rect",
-            key="canvas",
+            key=canvas_key,
             initial_drawing=None,
         )
         
