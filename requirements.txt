@@ -1,3 +1,4 @@
 streamlit==1.40.0
 streamlit-drawable-canvas==0.9.3
 pillow==11.1.0
+pywin32

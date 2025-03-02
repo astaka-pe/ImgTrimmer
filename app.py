@@ -3,6 +3,7 @@ from PIL import Image, ImageGrab
 import io
 from streamlit_drawable_canvas import st_canvas
 import uuid
+import win32clipboard
 
 def read_clipboard_image():
     try:
@@ -16,40 +17,72 @@ def read_clipboard_image():
         st.error(f"Error reading clipboard: {e}")
         return None
 
-def main():
-    if "clipboard_images" not in st.session_state:
-        st.session_state.clipboard_images = []
-        st.session_state.clipboard_filenames = []
-    
-    uploaded_files = st.file_uploader("Upload images", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
-
-    clip_load, clip_clear = st.columns(2)
-    with clip_load:
-        if st.button("Load from clipboard"):
-            clipboard_image = read_clipboard_image()
-            if clipboard_image:
-                # Generate unique filename with timestamp
-                clipboard_filename = f"clipboard_{uuid.uuid4().hex[:8]}"
-                st.session_state.clipboard_images.append(clipboard_image)
-                st.session_state.clipboard_filenames.append(clipboard_filename)
-                st.success("Image loaded from clipboard!")
-                st.rerun()
-    
-    with clip_clear:
-        if st.session_state.clipboard_images and st.button("Clear clipboard images"):
-            st.session_state.clipboard_images = []
-            st.session_state.clipboard_filenames = []
-            st.rerun()
-    
+def read_clipboard_images():
     images = []
-    filenames = []
+    try:
+        win32clipboard.OpenClipboard()
+        
+        if win32clipboard.IsClipboardFormatAvailable(win32clipboard.CF_DIB):
+            data = win32clipboard.GetClipboardData(win32clipboard.CF_DIB)
+            image = Image.open(io.BytesIO(data))
+            images.append(image)
+
+        elif win32clipboard.IsClipboardFormatAvailable(win32clipboard.CF_HDROP):
+            filepaths = win32clipboard.GetClipboardData(win32clipboard.CF_HDROP)
+            for filepath in filepaths:
+                try:
+                    img = Image.open(filepath)
+                    images.append(img)
+                except Exception as e:
+                    st.error(f"Error loading image {filepath}: {e}")
+
+    except Exception as e:
+        st.error(f"Error reading clipboard: {e}")
+
+    finally:
+        win32clipboard.CloseClipboard()
+
+    return images
+
+def main():
+    if "images" not in st.session_state:
+        st.session_state.images = []
+        st.session_state.filenames = []
+    
+    if "file_uploader_key" not in st.session_state:
+        st.session_state.file_uploader_key = str(uuid.uuid4())
+    
+    uploaded_files = st.file_uploader("Upload images", type=["png", "jpg", "jpeg"], accept_multiple_files=True, key=st.session_state.file_uploader_key)
 
     if uploaded_files:
-        images = [Image.open(f) for f in uploaded_files]
-        filenames = [f.name for f in uploaded_files]
+        for file in uploaded_files:
+            if file.name not in st.session_state.filenames:
+                image = Image.open(file)
+                st.session_state.images.append(image)
+                st.session_state.filenames.append(file.name)
+        st.session_state.file_uploader_key = str(uuid.uuid4())
 
-    images.extend(st.session_state.clipboard_images)
-    filenames.extend(st.session_state.clipboard_filenames)
+    clip_load, clear_all = st.columns(2)
+    with clip_load:
+        if st.button("Load from clipboard"):
+            clipboard_images = read_clipboard_images()
+            if clipboard_images:
+                for clipboard_image in clipboard_images:
+                    clipboard_filename = f"clipboard_{uuid.uuid4().hex[:8]}"
+                    st.session_state.images.append(clipboard_image)
+                    st.session_state.filenames.append(clipboard_filename)
+                st.success(f"Loaded {len(clipboard_images)} images from clipboard!")
+                st.rerun()
+    
+    with clear_all:
+        if st.session_state.images and st.button("Clear all images"):
+            st.session_state.images = []
+            st.session_state.filenames = []
+            st.session_state.file_uploader_key = str(uuid.uuid4())
+            st.rerun()
+
+    images = st.session_state.images
+    filenames = st.session_state.filenames
 
     if images:
         img_size = images[0].size
@@ -67,10 +100,20 @@ def main():
         st.subheader("Input Images")
         num_cols = min(len(images), 4)
         cols = st.columns(len(images))
+
+        images_to_delete = []
         for i , (img, filename) in enumerate(zip(images, filenames)):
             col_idx = i % num_cols
             with cols[col_idx]:
                 st.image(img, caption=filename, use_container_width=True)
+                if st.button(f"Delete {filename}", key=f"delete_{i}"):
+                    images_to_delete.append(i)
+        
+        if images_to_delete:
+            for i in sorted(images_to_delete, reverse=True):
+                del st.session_state.images[i]
+                del st.session_state.filenames[i]
+            st.rerun()
 
         st.subheader("Drawing Canvas")
         selected_idx = st.selectbox("Select image for drawing", range(len(images)), format_func=lambda i: filenames[i])
